@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrepShare — Meal Prep Social App</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #faf6f0; --warm1: #f2e8d9; --warm2: #e8d5b7;
+    --brown: #6b4c2a; --brown-light: #9a7052; --rust: #c0522a;
+    --rust-light: #e8795a; --sage: #7a9e7e; --text: #2c1f0e;
+    --text-muted: #7a6350; --card-bg: #fffdf9; --border: #e8d9c5;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar { width: 72px; background: var(--brown); display: flex; flex-direction: column; align-items: center; padding: 1rem 0; gap: 8px; flex-shrink: 0; }
+  .sidebar-logo { font-family: 'Playfair Display', serif; color: var(--warm2); font-size: 20px; font-weight: 600; margin-bottom: 12px; cursor: pointer; }
+  .nav-btn { width: 44px; height: 44px; border-radius: 12px; border: none; background: transparent; color: var(--warm2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: background 0.2s; position: relative; }
+  .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.15); }
+  .nav-btn .tooltip { display: none; position: absolute; left: 58px; background: var(--text); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 100; }
+  .nav-btn:hover .tooltip { display: block; }
+  .avatar-small { width: 36px; height: 36px; border-radius: 50%; background: var(--warm2); color: var(--brown); font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; margin-top: auto; border: 2px solid var(--rust); cursor: pointer; }
+
+  .main { flex: 1; display: flex; overflow: hidden; }
+  .view { display: none; flex: 1; overflow: hidden; }
+  .view.active { display: flex; }
+
+  /* Feed */
+  .feed-view { flex-direction: row; }
+  .feed-left { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 14px; }
+  .feed-right { width: 240px; padding: 1.25rem; border-left: 1px solid var(--border); overflow-y: auto; }
+  .section-header { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: var(--brown); margin-bottom: 2px; }
+  .section-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1rem; }
+
+  /* Recipe card */
+  .recipe-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+  .recipe-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(107,76,42,0.1); }
+  .card-img { width: 100%; height: 140px; background: var(--warm1); display: flex; align-items: center; justify-content: center; font-size: 48px; }
+  .card-body { padding: 12px 14px; }
+  .card-author { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .author-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--warm2); color: var(--brown); font-size: 10px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .author-name { font-size: 12px; color: var(--text-muted); }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tag { font-size: 10px; background: var(--warm1); color: var(--brown-light); padding: 2px 8px; border-radius: 20px; }
+  .card-footer { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-muted); }
+  .card-action { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 8px; transition: all 0.15s; }
+  .card-action:hover { background: var(--warm1); color: var(--rust); }
+  .card-action.liked { color: var(--rust); }
+
+  /* Suggestions */
+  .suggest-title { font-size: 13px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  .suggest-user { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .suggest-info .name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .suggest-info .meta { font-size: 11px; color: var(--text-muted); }
+  .follow-btn { font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--rust); color: var(--rust); background: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .follow-btn:hover, .follow-btn.following { background: var(--rust); color: white; border-color: var(--rust); }
+
+  /* Explore */
+  .explore-view { flex-direction: column; overflow-y: auto; padding: 1.25rem; }
+  .search-bar { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 1rem; }
+  .search-bar input { flex: 1; border: none; background: none; font-size: 14px; color: var(--text); outline: none; font-family: 'DM Sans', sans-serif; }
+  .search-bar input::placeholder { color: var(--text-muted); }
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filter-chip { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .filter-chip:hover, .filter-chip.active { background: var(--brown); color: var(--warm2); border-color: var(--brown); }
+  .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+
+  /* Post */
+  .post-view { flex-direction: column; overflow-y: auto; padding: 1.25rem; max-width: 560px; }
+  .form-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-input { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--cream); outline: none; transition: border 0.15s; }
+  .form-input:focus { border-color: var(--rust-light); }
+  .form-textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--cream); outline: none; resize: vertical; min-height: 80px; transition: border 0.15s; }
+  .form-textarea:focus { border-color: var(--rust-light); }
+  .ingredient-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ingredient-row input { flex: 1; }
+  .add-btn { font-size: 12px; color: var(--rust); background: var(--warm1); border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+  .add-btn:hover { background: var(--warm2); }
+  .remove-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0 4px; }
+  .submit-btn { width: 100%; background: var(--rust); color: white; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-family: 'Playfair Display', serif; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .submit-btn:hover { background: var(--brown); }
+
+  /* Planner */
+  .planner-view { flex-direction: column; overflow-y: auto; padding: 1.25rem; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .day-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; min-height: 120px; }
+  .day-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; text-align: center; }
+  .meal-slot { background: var(--warm1); border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 11px; color: var(--brown); cursor: pointer; transition: background 0.15s; }
+  .meal-slot:hover { background: var(--warm2); }
+  .meal-slot .meal-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .add-meal { border: 1px dashed var(--border); border-radius: 8px; padding: 6px; text-align: center; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .add-meal:hover { background: var(--warm1); border-color: var(--warm2); color: var(--brown); }
+
+  /* Grocery */
+  .grocery-view { flex-direction: row; overflow: hidden; }
+  .grocery-left { flex: 1; overflow-y: auto; padding: 1.25rem; }
+  .grocery-right { width: 220px; border-left: 1px solid var(--border); padding: 1.25rem; overflow-y: auto; }
+  .grocery-category { margin-bottom: 1.25rem; }
+  .cat-title { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .grocery-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s; }
+  .grocery-item:hover { background: var(--warm1); }
+  .grocery-item.checked { opacity: 0.5; text-decoration: line-through; }
+  .grocery-item .check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 10px; }
+  .grocery-item.checked .check { background: var(--sage); border-color: var(--sage); color: white; }
+  .grocery-item .item-name { font-size: 14px; color: var(--text); flex: 1; }
+  .grocery-item .item-qty { font-size: 12px; color: var(--text-muted); }
+  .progress-ring { text-align: center; margin-bottom: 1rem; }
+  .ring-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+  .ring-num { font-size: 22px; font-weight: 500; color: var(--brown); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--brown); color: var(--warm2); font-size: 13px; padding: 10px 20px; border-radius: 20px; transition: transform 0.3s; z-index: 999; pointer-events: none; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-logo" onclick="nav('feed')">🍳</div>
+    <button class="nav-btn active" id="nb-feed" onclick="nav('feed')">🏠<span class="tooltip">Feed</span></button>
+    <button class="nav-btn" id="nb-explore" onclick="nav('explore')">🔍<span class="tooltip">Explore</span></button>
+    <button class="nav-btn" id="nb-post" onclick="nav('post')">✍️<span class="tooltip">Post Recipe</span></button>
+    <button class="nav-btn" id="nb-planner" onclick="nav('planner')">📅<span class="tooltip">Meal Planner</span></button>
+    <button class="nav-btn" id="nb-grocery" onclick="nav('grocery')">🛒<span class="tooltip">Grocery List</span></button>
+    <div class="avatar-small">B</div>
+  </div>
+
+  <div class="main">
+
+    <!-- FEED -->
+    <div class="view feed-view active" id="view-feed">
+      <div class="feed-left">
+        <div class="section-header">Your Feed</div>
+        <div class="section-sub">Recipes from people you follow</div>
+        <div id="feed-cards"></div>
+      </div>
+      <div class="feed-right">
+        <div class="suggest-title">Suggested for you</div>
+        <div id="suggestions"></div>
+      </div>
+    </div>
+
+    <!-- EXPLORE -->
+    <div class="view explore-view" id="view-explore">
+      <div class="section-header">Explore</div>
+      <div class="section-sub">Discover new recipes and creators</div>
+      <div class="search-bar">
+        <span style="font-size:16px;color:var(--text-muted)">🔍</span>
+        <input type="text" placeholder="Search recipes, ingredients, cuisines..." id="search-input" oninput="filterRecipes()">
+      </div>
+      <div class="filter-row" id="filter-chips"></div>
+      <div class="recipe-grid" id="explore-grid"></div>
+    </div>
+
+    <!-- POST -->
+    <div class="view post-view" id="view-post">
+      <div class="section-header">Share a Recipe</div>
+      <div class="section-sub">Let the community try your creation</div>
+      <div class="form-section">
+        <label class="form-label">Recipe name</label>
+        <input class="form-input" id="r-name" placeholder="e.g. Smoky Chipotle Bowl" style="margin-bottom:12px">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="r-desc" placeholder="Tell us what makes this recipe special..."></textarea>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Ingredients</label>
+        <div id="ingredient-list"></div>
+        <button class="add-btn" onclick="addIngredient()" style="margin-top:6px">+ Add ingredient</button>
+      </div>
+      <div class="form-section">
+        <label class="form-label">Instructions</label>
+        <textarea class="form-textarea" id="r-steps" placeholder="Step 1: ..." style="min-height:120px"></textarea>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <div style="flex:1">
+            <label class="form-label">Cook time</label>
+            <input class="form-input" id="r-time" placeholder="e.g. 30 min">
+          </div>
+          <div style="flex:1">
+            <label class="form-label">Category</label>
+            <select class="form-input" id="r-cat">
+              <option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Dessert</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="submit-btn" onclick="submitRecipe()">Publish Recipe</button>
+    </div>
+
+    <!-- PLANNER -->
+    <div class="view planner-view" id="view-planner">
+      <div class="section-header">Weekly Meal Plan</div>
+      <div class="section-sub">Click any day slot to add a meal — click a meal to remove it</div>
+      <div class="week-grid" id="week-grid"></div>
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:1rem">
+        <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:10px">QUICK STATS</div>
+        <div style="display:flex;gap:12px">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:22px;font-weight:500;color:var(--brown)" id="meals-planned">0</div>
+            <div style="font-size:11px;color:var(--text-muted)">meals planned</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:22px;font-weight:500;color:var(--rust)" id="days-covered">0</div>
+            <div style="font-size:11px;color:var(--text-muted)">days covered</div>
+          </div>
+          <div style="text-align:center;flex:1">
+            <div style="font-size:22px;font-weight:500;color:var(--sage)" id="recipes-used">0</div>
+            <div style="font-size:11px;color:var(--text-muted)">unique recipes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROCERY -->
+    <div class="view grocery-view" id="view-grocery">
+      <div class="grocery-left">
+        <div class="section-header">Grocery List</div>
+        <div class="section-sub">Based on your meal plan this week</div>
+        <div id="grocery-list"></div>
+      </div>
+      <div class="grocery-right">
+        <div class="progress-ring">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#e8d9c5" stroke-width="6"/>
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#c0522a" stroke-width="6"
+              stroke-dasharray="226" id="ring-progress" stroke-dashoffset="226"
+              stroke-linecap="round" transform="rotate(-90 45 45)" style="transition:stroke-dashoffset 0.5s"/>
+          </svg>
+          <div class="ring-num" id="ring-pct">0%</div>
+          <div class="ring-label">items checked</div>
+        </div>
+        <button class="add-btn" onclick="addGroceryItem()" style="width:100%;margin-bottom:8px">+ Add item</button>
+        <button class="add-btn" onclick="clearChecked()" style="width:100%">Clear checked</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const EMOJIS = ['🥗','🍜','🥘','🍛','🫕','🥙','🍝','🧆','🥞','🍲'];
+const AVATARS = ['#c0522a','#7a9e7e','#6b4c2a','#e8795a','#9a7052'];
+
+let state = {
+  recipes: [
+    {id:1,title:'Smoky Chipotle Grain Bowl',author:'Maya R.',tags:['Lunch','High-Protein'],emoji:'🥗',likes:34,liked:false,time:'25 min',cat:'Lunch'},
+    {id:2,title:'Overnight Oat Prep Jars',author:'Jake T.',tags:['Breakfast','Quick'],emoji:'🥞',likes:58,liked:true,time:'10 min',cat:'Breakfast'},
+    {id:3,title:'Thai Peanut Noodles',author:'Priya S.',tags:['Dinner','Vegan'],emoji:'🍜',likes:91,liked:false,time:'20 min',cat:'Dinner'},
+    {id:4,title:'Roasted Veggie Curry',author:'Sam L.',tags:['Dinner','Gluten-Free'],emoji:'🍛',likes:47,liked:false,time:'40 min',cat:'Dinner'},
+    {id:5,title:'Protein Falafel Wrap',author:'Aisha K.',tags:['Lunch','Vegetarian'],emoji:'🥙',likes:29,liked:false,time:'30 min',cat:'Lunch'},
+    {id:6,title:'Lemon Herb Pasta Salad',author:'Tom B.',tags:['Lunch','Cold Prep'],emoji:'🍝',likes:62,liked:false,time:'15 min',cat:'Lunch'},
+  ],
+  suggestions: [
+    {name:'Maya R.',meta:'24 recipes · 1.2k followers',following:false},
+    {name:'Priya S.',meta:'18 recipes · 890 followers',following:false},
+    {name:'Chef Sam',meta:'52 recipes · 3.4k followers',following:false},
+    {name:'Aisha K.',meta:'11 recipes · 412 followers',following:false},
+  ],
+  ingredients: [],
+  planner: {Mon:[],Tue:[],Wed:[],Thu:[],Fri:[],Sat:[],Sun:[]},
+  grocery: [
+    {cat:'Produce',items:[
+      {name:'Spinach',qty:'200g',checked:false},{name:'Cherry tomatoes',qty:'1 cup',checked:false},
+      {name:'Bell peppers',qty:'3',checked:true},{name:'Garlic',qty:'1 bulb',checked:false},
+    ]},
+    {cat:'Grains & Legumes',items:[
+      {name:'Brown rice',qty:'2 cups',checked:false},{name:'Chickpeas (can)',qty:'2 cans',checked:true},
+      {name:'Quinoa',qty:'1 cup',checked:false},{name:'Oats',qty:'500g',checked:false},
+    ]},
+    {cat:'Proteins',items:[
+      {name:'Chicken breast',qty:'600g',checked:false},{name:'Greek yogurt',qty:'500g',checked:false},
+      {name:'Eggs',qty:'12',checked:true},
+    ]},
+    {cat:'Pantry',items:[
+      {name:'Olive oil',qty:'1 bottle',checked:false},{name:'Soy sauce',qty:'1 bottle',checked:false},
+      {name:'Peanut butter',qty:'jar',checked:false},
+    ]},
+  ],
+  activeFilter: 'All',
+  searchQuery: '',
+};
+
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('nb-'+view).classList.add('active');
+  render();
+}
+
+function render() {
+  renderFeed(); renderSuggestions(); renderExplore(); renderPlanner(); renderGrocery();
+}
+
+function renderFeed() {
+  const el = document.getElementById('feed-cards');
+  if (!el) return;
+  el.innerHTML = state.recipes.map(r => `
+    <div class="recipe-card" style="margin-bottom:12px">
+      <div class="card-img">${r.emoji}</div>
+      <div class="card-body">
+        <div class="card-author">
+          <div class="author-avatar">${r.author[0]}</div>
+          <span class="author-name">${r.author}</span>
+          <span class="author-name" style="margin-left:auto">⏱ ${r.time}</span>
+        </div>
+        <div class="card-title">${r.title}</div>
+        <div class="card-tags">${r.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <div class="card-footer">
+          <button class="card-action ${r.liked?'liked':''}" onclick="toggleLike(${r.id})">
+            <span>${r.liked?'❤️':'🤍'}</span> ${r.likes}
+          </button>
+          <button class="card-action" onclick="addToPlanner(${r.id})"><span>📅</span> Plan it</button>
+          <button class="card-action" onclick="showToast('Ingredients added to list! 🛒')"><span>🛒</span> Shop</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSuggestions() {
+  const el = document.getElementById('suggestions');
+  if (!el) return;
+  el.innerHTML = state.suggestions.map((u,i) => `
+    <div class="suggest-user">
+      <div class="author-avatar" style="width:34px;height:34px;background:${AVATARS[i%AVATARS.length]};color:white;font-size:12px">${u.name[0]}</div>
+      <div class="suggest-info" style="flex:1">
+        <div class="name">${u.name}</div>
+        <div class="meta">${u.meta}</div>
+      </div>
+      <button class="follow-btn ${u.following?'following':''}" onclick="toggleFollow(${i})">${u.following?'Following':'Follow'}</button>
+    </div>
+  `).join('');
+}
+
+function renderExplore() {
+  const chips = document.getElementById('filter-chips');
+  const el = document.getElementById('explore-grid');
+  if (!chips || !el) return;
+  const filters = ['All','Breakfast','Lunch','Dinner','Vegan','Quick'];
+  chips.innerHTML = filters.map(f => `<button class="filter-chip ${f===state.activeFilter?'active':''}" onclick="setFilter('${f}')">${f}</button>`).join('');
+  const q = state.searchQuery.toLowerCase();
+  const filtered = state.recipes.filter(r => {
+    const matchQ = !q || r.title.toLowerCase().includes(q) || r.tags.join(' ').toLowerCase().includes(q);
+    const matchF = state.activeFilter==='All' || r.tags.includes(state.activeFilter) || r.cat===state.activeFilter;
+    return matchQ && matchF;
+  });
+  el.innerHTML = filtered.map(r => `
+    <div class="recipe-card">
+      <div class="card-img" style="height:100px;font-size:36px">${r.emoji}</div>
+      <div class="card-body">
+        <div class="card-title" style="font-size:13px">${r.title}</div>
+        <div class="card-tags">${r.tags.slice(0,2).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <div style="font-size:11px;color:var(--text-muted)">by ${r.author} · ❤️ ${r.likes}</div>
+      </div>
+    </div>
+  `).join('') || '<div style="color:var(--text-muted);font-size:14px;padding:1rem">No recipes found.</div>';
+}
+
+function renderPlanner() {
+  const el = document.getElementById('week-grid');
+  if (!el) return;
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  el.innerHTML = days.map(d => {
+    const meals = state.planner[d];
+    return `<div class="day-card">
+      <div class="day-label">${d}</div>
+      ${meals.map((m,i) => `<div class="meal-slot" onclick="removeMeal('${d}',${i})">
+        <div class="meal-label">MEAL ${i+1}</div>${m}
+      </div>`).join('')}
+      <div class="add-meal" onclick="promptAddMeal('${d}')">+ add meal</div>
+    </div>`;
+  }).join('');
+  let total=0, unique=new Set(), covered=0;
+  days.forEach(d => {
+    if (state.planner[d].length) { covered++; state.planner[d].forEach(m => { total++; unique.add(m); }); }
+  });
+  document.getElementById('meals-planned').textContent = total;
+  document.getElementById('days-covered').textContent = covered;
+  document.getElementById('recipes-used').textContent = unique.size;
+}
+
+function renderGrocery() {
+  const el = document.getElementById('grocery-list');
+  if (!el) return;
+  const catIcons = ['🥦','🌾','🍗','🫙'];
+  el.innerHTML = state.grocery.map((cat,ci) => `
+    <div class="grocery-category">
+      <div class="cat-title"><span style="font-size:14px">${catIcons[ci]||'📦'}</span>${cat.cat}</div>
+      ${cat.items.map((item,ii) => `
+        <div class="grocery-item ${item.checked?'checked':''}" onclick="toggleCheck(${ci},${ii})">
+          <div class="check">${item.checked?'✓':''}</div>
+          <span class="item-name">${item.name}</span>
+          <span class="item-qty">${item.qty}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+  const all = state.grocery.flatMap(c=>c.items);
+  const done = all.filter(i=>i.checked).length;
+  const pct = all.length ? Math.round(done/all.length*100) : 0;
+  document.getElementById('ring-progress').setAttribute('stroke-dashoffset', 226-(226*pct/100));
+  document.getElementById('ring-pct').textContent = pct+'%';
+}
+
+function toggleLike(id) {
+  const r = state.recipes.find(x=>x.id===id);
+  if (!r) return;
+  r.liked=!r.liked; r.likes+=r.liked?1:-1;
+  renderFeed();
+}
+
+function toggleFollow(i) {
+  state.suggestions[i].following=!state.suggestions[i].following;
+  showToast(state.suggestions[i].following?`Following ${state.suggestions[i].name}!`:`Unfollowed ${state.suggestions[i].name}`);
+  renderSuggestions();
+}
+
+function addIngredient() {
+  state.ingredients.push({name:'',qty:''});
+  renderIngredients();
+}
+
+function removeIngredient(i) {
+  state.ingredients.splice(i,1);
+  renderIngredients();
+}
+
+function renderIngredients() {
+  const el = document.getElementById('ingredient-list');
+  if (!el) return;
+  el.innerHTML = state.ingredients.map((ing,i) => `
+    <div class="ingredient-row">
+      <input class="form-input" placeholder="Ingredient" value="${ing.name}" oninput="state.ingredients[${i}].name=this.value" style="flex:2">
+      <input class="form-input" placeholder="Amount" value="${ing.qty}" oninput="state.ingredients[${i}].qty=this.value" style="flex:1">
+      <button class="remove-btn" onclick="removeIngredient(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function submitRecipe() {
+  const name = document.getElementById('r-name').value.trim();
+  if (!name) { showToast('Please enter a recipe name!'); return; }
+  state.recipes.unshift({
+    id:Date.now(), title:name, author:'You',
+    tags:[document.getElementById('r-cat').value,'Homemade'],
+    emoji:EMOJIS[Math.floor(Math.random()*EMOJIS.length)],
+    likes:0, liked:false,
+    time:document.getElementById('r-time').value||'30 min',
+    cat:document.getElementById('r-cat').value
+  });
+  ['r-name','r-desc','r-steps','r-time'].forEach(id=>document.getElementById(id).value='');
+  state.ingredients=[];
+  renderIngredients();
+  showToast('Recipe published! 🎉');
+  setTimeout(()=>nav('feed'),1200);
+}
+
+function addToPlanner(id) {
+  const r = state.recipes.find(x=>x.id===id);
+  if (!r) return;
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const day=days.find(d=>state.planner[d].length<3)||'Mon';
+  state.planner[day].push(r.title);
+  showToast(`Added to ${day}! 📅`);
+  renderPlanner();
+}
+
+function promptAddMeal(day) {
+  const meal=state.recipes[Math.floor(Math.random()*state.recipes.length)];
+  state.planner[day].push(meal.title);
+  showToast(`Added "${meal.title}" to ${day}!`);
+  renderPlanner();
+}
+
+function removeMeal(day,i) {
+  state.planner[day].splice(i,1);
+  renderPlanner();
+}
+
+function toggleCheck(ci,ii) {
+  state.grocery[ci].items[ii].checked=!state.grocery[ci].items[ii].checked;
+  renderGrocery();
+}
+
+function clearChecked() {
+  state.grocery.forEach(cat=>cat.items=cat.items.filter(i=>!i.checked));
+  renderGrocery();
+  showToast('Cleared checked items!');
+}
+
+function addGroceryItem() {
+  const name=prompt('Item name:');
+  if (!name) return;
+  const qty=prompt('Quantity:')||'1';
+  state.grocery[0].items.push({name,qty,checked:false});
+  renderGrocery();
+}
+
+function setFilter(f) {
+  state.activeFilter=f;
+  renderExplore();
+}
+
+function filterRecipes() {
+  state.searchQuery=document.getElementById('search-input').value;
+  renderExplore();
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+addIngredient();
+render();
+</script>
+</body>
+</html>
